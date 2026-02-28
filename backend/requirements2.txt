@@ -1,0 +1,30 @@
+# ContextEngine / OptiEngine — Python Dependencies
+
+# Web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# MCP server
+mcp>=1.0.0
+
+# Vector database
+chromadb>=0.5.0
+
+# Embeddings (local, no API cost)
+sentence-transformers>=3.0.0
+
+# LLM synthesizer
+groq>=0.9.0
+
+# Data validation
+pydantic>=2.7.0
+pydantic-settings>=2.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Demo frontend
+streamlit>=1.35.0
+
+# HTTP client (used by Streamlit control plane)
+httpx>=0.27.0
