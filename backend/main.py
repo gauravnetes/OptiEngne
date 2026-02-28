@@ -1,27 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from app.api.endpoints import router as api_router
+from dotenv import load_dotenv
 
-app = FastAPI()
+load_dotenv()
+
+app = FastAPI(
+    title="OptiEngine API",
+    description="Multi-tiered algorithmic optimization and contextual hydration engine.",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class QueryRequest(BaseModel):
-    prompt: str
+app.include_router(api_router, prefix="/api/v1")
 
-@app.post("/api/v1/optimize")
-async def optimize_code(query: QueryRequest):
-    return {
-        "status": "success",
-        "original_complexity": "O(n^2)",
-        "optimized_complexity": "O(n)",
-        "optimized_code": "int result = 0;\n// C++ logic here",
-        "tokens_saved": 850,
-        "time_saved_ms": 1420
-    }
+@app.get("/health")
+async def health_check():
+    """Simple health check to verify the server is running."""
+    return {"status": "OptiEngine is online and listening."}
