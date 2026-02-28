@@ -1,409 +1,470 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowRight } from "lucide-react";
 
-// ── Structured result type ──────────────────────────────────────────
-interface OptimizationResult {
-  match_confidence: string;
-  problem_type: string;
-  naive_approach: {
-    complexity: string;
-    tokens_used: number;
-    execution_time_ms: number;
-  };
-  optiengine_approach: {
-    complexity: string;
-    tokens_used: number;
-    execution_time_ms: number;
-    language: string;
-    code_snippet: string;
-  };
+// ── Types ───────────────────────────────────────────────────────────
+type ConnectionStatus = "DISCONNECTED" | "CONNECTING" | "ONLINE";
+
+interface NaiveApproach {
+  complexity: string;
+  tokens_used: number;
+  execution_time_ms: number;
 }
 
+interface OptiEngineApproach {
+  complexity: string;
+  tokens_used: number;
+  execution_time_ms: number;
+  language: string;
+  code_snippet: string;
+}
+
+interface InterceptPayload {
+  problem_type: string;
+  match_confidence: string;
+  prompt: string;
+  naive_approach: NaiveApproach;
+  optiengine_approach: OptiEngineApproach;
+}
+
+interface WsMessage {
+  type: string;
+  payload: InterceptPayload;
+}
+
+interface GlobalMetrics {
+  totalIntercepts: number;
+  tokensSaved: number;
+  computeSavedMs: number;
+}
+
+// ── Font helpers ────────────────────────────────────────────────────
+const pixel = "font-[family-name:var(--font-inter)]";
+const grotesk = "font-[family-name:var(--font-space-grotesk)]";
+
+// ── WebSocket URL ───────────────────────────────────────────────────
+const WS_URL = "ws://localhost:8000/ws/telemetry";
+
 export default function Home() {
-  const [prompt, setPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<OptimizationResult | null>(null);
+  // ── Real State ──────────────────────────────────────────────────
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("CONNECTING");
+  const [globalMetrics, setGlobalMetrics] = useState<GlobalMetrics>({
+    totalIntercepts: 0,
+    tokensSaved: 0,
+    computeSavedMs: 0,
+  });
+  const [activeIntercept, setActiveIntercept] = useState<InterceptPayload | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  const handleSubmit = () => {
-    if (!prompt.trim() || loading) return;
-    setLoading(true);
-    setResult(null);
-    setTimeout(() => {
-      setLoading(false);
-      setResult({
-        match_confidence: "98%",
-        problem_type: "Graph Traversal",
-        naive_approach: {
-          complexity: "O(V³)",
-          tokens_used: 1250,
-          execution_time_ms: 15400,
-        },
-        optiengine_approach: {
-          complexity: "O((V+E) log V)",
-          tokens_used: 0,
-          execution_time_ms: 120,
-          language: "C++",
-          code_snippet: `#include <queue>
-#include <vector>
-using namespace std;
+  // ── WebSocket Hook ──────────────────────────────────────────────
+  useEffect(() => {
+    setConnectionStatus("CONNECTING");
 
-// Dijkstra's with priority queue
-// Time: O((V+E) log V)
-vector<int> dijkstra(
-  vector<vector<pair<int,int>>>& graph,
-  int src
-) {
-  int V = graph.size();
-  vector<int> dist(V, INT_MAX);
-  priority_queue<
-    pair<int,int>,
-    vector<pair<int,int>>,
-    greater<pair<int,int>>
-  > pq;
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
 
-  dist[src] = 0;
-  pq.push({0, src});
+    ws.onopen = () => {
+      setConnectionStatus("ONLINE");
+    };
 
-  while (!pq.empty()) {
-    auto [d, u] = pq.top();
-    pq.pop();
-    if (d > dist[u]) continue;
-    for (auto& [v, w] : graph[u]) {
-      if (dist[u] + w < dist[v]) {
-        dist[v] = dist[u] + w;
-        pq.push({dist[v], v});
+    ws.onclose = () => {
+      setConnectionStatus("DISCONNECTED");
+    };
+
+    ws.onerror = () => {
+      setConnectionStatus("DISCONNECTED");
+    };
+
+    ws.onmessage = (event: MessageEvent) => {
+      try {
+        const data: WsMessage = JSON.parse(event.data);
+
+        if (data.type === "MCP_INTERCEPT" && data.payload) {
+          const payload = data.payload;
+
+          // Update the active intercept with the full payload
+          setActiveIntercept(payload);
+
+          // Mathematically update cumulative metrics
+          const tokenDiff =
+            payload.naive_approach.tokens_used -
+            payload.optiengine_approach.tokens_used;
+          const timeDiff =
+            payload.naive_approach.execution_time_ms -
+            payload.optiengine_approach.execution_time_ms;
+
+          setGlobalMetrics((prev) => ({
+            totalIntercepts: prev.totalIntercepts + 1,
+            tokensSaved: prev.tokensSaved + tokenDiff,
+            computeSavedMs: prev.computeSavedMs + timeDiff,
+          }));
+        }
+      } catch {
+        // Silently ignore malformed messages
       }
-    }
-  }
-  return dist;
-}`,
-        },
-      });
-    }, 1500);
-  };
+    };
 
-  // ── Helper: format ms to seconds ──────────────────────────────────
+    // Cleanup on unmount
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  // ── Helpers ─────────────────────────────────────────────────────
   const msToSec = (ms: number) => (ms / 1000).toFixed(2) + "s";
+  const promptTokens = activeIntercept
+    ? activeIntercept.prompt.split(/\s+/).filter(Boolean).length
+    : 0;
+
+  const computeSavedPercent =
+    globalMetrics.computeSavedMs > 0
+      ? ((globalMetrics.computeSavedMs / (globalMetrics.computeSavedMs + 120)) * 100).toFixed(1)
+      : "0";
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-300 flex flex-col">
-      {/* ═══════════════════════════════════════════════════════════
-          HEADER SECTION — Top Grid Block
-          ═══════════════════════════════════════════════════════════ */}
-      <header className="border border-gray-800 rounded-none">
-        {/* Top status bar */}
-        <div className="border-b border-gray-800 px-6 py-2 flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-gray-600">
-            sys::optiengine_v0.1.0
-          </span>
-          <div className="flex gap-4 items-center">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">
-              status:
-              <span className="text-green-500 ml-1">■</span>
-              <span className="ml-1">online</span>
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">
-              mode: intercept
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#050505] bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:16px_16px] text-gray-300">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
 
-        {/* Main title block */}
-        <div className="px-6 py-12 md:py-16 lg:py-20">
-          <h1
-            className="text-6xl md:text-8xl lg:text-9xl font-bold tracking-tighter leading-none text-white"
-            style={{ fontFamily: "var(--font-space-grotesk), sans-serif" }}
-          >
-            OPTIENGINE
-          </h1>
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:gap-6">
-            <p className="font-mono text-xs uppercase tracking-[0.25em] text-gray-500">
-              Algorithmic Optimization Engine // Intercept &amp; Upgrade
-            </p>
-            <div className="hidden sm:block h-px flex-1 bg-gray-800" />
-            <p className="font-mono text-[10px] uppercase tracking-widest text-gray-600 mt-1 sm:mt-0">
-              build::2026.02.28
+        {/* ═══════════════════════════════════════════════════════════
+            HEADER
+            ═══════════════════════════════════════════════════════════ */}
+        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className={`${pixel} text-7xl sm:text-8xl lg:text-9xl text-white font-black tracking-tighter leading-none`}>
+              OPTIENGINE
+            </h1>
+            <p className={`${grotesk} text-xs sm:text-sm text-white/40 uppercase tracking-[0.3em] mt-2`}>
+              Algorithmic Optimization Engine — MCP Protocol
             </p>
           </div>
-        </div>
+          <div className="flex items-center gap-3">
+            {/* Connection Status Badge — bound to WebSocket state */}
+            <div
+              className={`font-bold uppercase text-xs px-3 py-1.5 tracking-wider transition-colors duration-150 ${connectionStatus === "ONLINE"
+                  ? "bg-white text-black shadow-brutal"
+                  : connectionStatus === "CONNECTING"
+                    ? "bg-yellow-400 text-black shadow-[4px_4px_0px_0px_rgba(250,204,21,0.5)] animate-brutal-pulse"
+                    : "bg-red-500 text-white shadow-[4px_4px_0px_0px_rgba(239,68,68,0.5)]"
+                }`}
+            >
+              {connectionStatus === "ONLINE"
+                ? "MCP: ONLINE"
+                : connectionStatus === "CONNECTING"
+                  ? "MCP: CONNECTING..."
+                  : "MCP: DISCONNECTED"}
+            </div>
+            <div className={`${pixel} text-[10px] text-white/30 uppercase`}>
+              v0.1.0
+            </div>
+          </div>
+        </header>
 
-        {/* Grid decoration row */}
-        <div className="grid grid-cols-4 border-t border-gray-800">
-          {["PARSE", "TOKENIZE", "OPTIMIZE", "DEPLOY"].map((label) => (
+        {/* ═══════════════════════════════════════════════════════════
+            TELEMETRY SCOREBOARD — bound to globalMetrics
+            ═══════════════════════════════════════════════════════════ */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            {
+              label: "Total Intercepts",
+              value: globalMetrics.totalIntercepts > 0 ? String(globalMetrics.totalIntercepts) : "0",
+              accent: "text-cyan-400",
+            },
+            {
+              label: "Tokens Saved",
+              value: globalMetrics.tokensSaved > 0 ? globalMetrics.tokensSaved.toLocaleString() : "—",
+              accent: "text-orange-500",
+            },
+            {
+              label: "Compute Saved",
+              value: globalMetrics.computeSavedMs > 0 ? `${computeSavedPercent}%` : "—",
+              accent: "text-cyan-400",
+            },
+          ].map(({ label, value, accent }) => (
             <div
               key={label}
-              className="border-r border-gray-800 last:border-r-0 px-4 py-2 text-center"
+              className="border-2 border-white/10 bg-[#111] p-5 shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)]"
             >
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-gray-600">
+              <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/40 block mb-3`}>
                 {label}
+              </span>
+              <span className={`${pixel} text-5xl sm:text-6xl font-black ${accent} block leading-none`}>
+                {value}
               </span>
             </div>
           ))}
-        </div>
-      </header>
+        </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          MAIN CONTENT — Middle Grid Blocks
-          ═══════════════════════════════════════════════════════════ */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px]">
-        {/* Left: Input + Button */}
-        <div className="flex flex-col border border-gray-800 border-t-0">
+        {/* ═══════════════════════════════════════════════════════════
+            INPUT SECTION — shows the intercepted prompt
+            ═══════════════════════════════════════════════════════════ */}
+        <section className="border-2 border-white/10 bg-[#111] shadow-brutal">
           {/* Input label bar */}
-          <div className="border-b border-gray-800 px-6 py-2 flex justify-between items-center">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-gray-500">
-              input::prompt_source
+          <div className="border-b-2 border-white/10 px-5 py-2.5 flex justify-between items-center">
+            <span className={`${grotesk} text-[10px] uppercase tracking-[0.3em] text-white/40`}>
+              INPUT :: INTERCEPTED_PROMPT
             </span>
-            <span className="font-mono text-[10px] text-gray-600">
-              {prompt.length} chars
+            <span className={`${pixel} text-xs text-white/30`}>
+              {activeIntercept ? `${activeIntercept.prompt.length} chars / ${promptTokens} tokens` : "0 chars / 0 tokens"}
             </span>
           </div>
 
-          {/* Textarea container */}
-          <div className="flex-1 focus-within:bg-gray-900 transition-colors duration-200">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="// Enter your prompt here for algorithmic optimization..."
-              className="w-full h-full min-h-[240px] lg:min-h-[320px] bg-transparent p-6 font-mono text-sm text-gray-300 placeholder-gray-700 focus:outline-none resize-none"
-            />
+          {/* Prompt Display */}
+          <div className={`transition-colors duration-150 ${activeIntercept ? "bg-[#151515]" : ""}`}>
+            <div className={`${grotesk} w-full min-h-[100px] p-5 text-sm ${activeIntercept ? "text-gray-300" : "text-white/20"}`}>
+              {activeIntercept
+                ? activeIntercept.prompt
+                : connectionStatus === "ONLINE"
+                  ? "// Listening for MCP intercepts on ws://localhost:8000..."
+                  : connectionStatus === "CONNECTING"
+                    ? "// Establishing WebSocket connection..."
+                    : "// WebSocket disconnected. Check backend server."}
+            </div>
           </div>
 
-          {/* Action Button — Bottom Grid Block of Input */}
-          <button
-            onClick={handleSubmit}
-            disabled={!prompt.trim() || loading}
-            className={`
-              border-t border-gray-800 font-mono uppercase tracking-[0.25em] text-sm py-4 px-6
-              transition-all duration-100 text-left
-              ${loading
-                ? "bg-blue-600 text-white animate-brutalist-pulse cursor-wait"
-                : !prompt.trim()
-                  ? "bg-gray-900 text-gray-700 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-white hover:text-black cursor-pointer"
-              }
-            `}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-blink">▌</span>
-                {">> INTERCEPTING_PROMPT..."}
+          {/* Status indicator bar */}
+          <div className={`
+            border-t-2 border-white/10 uppercase tracking-[0.3em] text-sm py-3 px-5
+            text-left ${pixel}
+            ${connectionStatus === "ONLINE"
+              ? "bg-[#111] text-emerald-400/50"
+              : connectionStatus === "CONNECTING"
+                ? "bg-yellow-400/10 text-yellow-400/50 animate-brutal-pulse"
+                : "bg-red-500/10 text-red-500/50"
+            }
+          `}>
+            {connectionStatus === "ONLINE"
+              ? "▸ LISTENING ON ws://localhost:8000/ws/telemetry"
+              : connectionStatus === "CONNECTING"
+                ? "▸ CONNECTING TO MCP TRANSPORT..."
+                : "▸ CONNECTION LOST — RETRYING..."}
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════
+            LIVE MCP PIPELINE — renders when intercept data exists
+            ═══════════════════════════════════════════════════════════ */}
+        {activeIntercept && (
+          <section className="border-2 border-white/10 bg-[#111] shadow-[6px_6px_0px_0px_rgba(255,255,255,0.1)]">
+            <div className="border-b-2 border-white/10 px-5 py-2.5 flex justify-between items-center">
+              <span className={`${grotesk} text-[10px] uppercase tracking-[0.3em] text-white/40`}>
+                LIVE_MCP_PIPELINE
               </span>
-            ) : (
-              ">> EXECUTE_OPTIMIZATION"
-            )}
-          </button>
-        </div>
-
-        {/* Right: Info / Status Panel */}
-        <div className="flex flex-col border border-gray-800 border-t-0 lg:border-l-0">
-          {/* Panel header */}
-          <div className="border-b border-gray-800 px-6 py-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-gray-500">
-              output::result_stream
-            </span>
-          </div>
-
-          {/* ─── CONDITIONAL RESULT AREA ─────────────────────────── */}
-          <div className="flex-1 font-mono text-sm">
-            {result ? (
-              /* ═══ SPLIT-SCREEN RESULT VIEW ═══════════════════════ */
-              <div className="flex flex-col h-full">
-                {/* Top Result Header — Problem type + Confidence */}
-                <div className="border-b border-gray-800 px-4 py-3 flex justify-between items-center">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-gray-500 block">
-                      problem_type
-                    </span>
-                    <span className="text-white text-base font-bold">
-                      {result.problem_type}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-gray-500 block">
-                      match_confidence
-                    </span>
-                    <span className="text-emerald-400 text-2xl font-bold">
-                      {result.match_confidence}
-                    </span>
-                  </div>
-                </div>
-
-                {/* ─── Split Grid: Naive vs OptiEngine ────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 flex-1">
-                  {/* Column A — Naive AI (Left) */}
-                  <div className="border-b md:border-b-0 md:border-r border-gray-800 flex flex-col">
-                    {/* Title bar */}
-                    <div className="border-b border-gray-800 px-4 py-2 bg-gray-900/50">
-                      <span className="text-red-500 text-sm uppercase tracking-[0.2em]">
-                        [ NAIVE_AI_APPROACH ]
-                      </span>
-                    </div>
-                    {/* Stats grid */}
-                    <div className="flex flex-col flex-1">
-                      {/* Time Complexity */}
-                      <div className="border-b border-gray-800 px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Time Complexity
-                        </span>
-                        <span className="text-red-500 text-xl font-bold">
-                          {result.naive_approach.complexity}
-                        </span>
-                      </div>
-                      {/* Tokens Wasted */}
-                      <div className="border-b border-gray-800 px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Tokens Wasted
-                        </span>
-                        <span className="text-red-500 text-xl font-bold">
-                          {result.naive_approach.tokens_used.toLocaleString()}
-                        </span>
-                      </div>
-                      {/* Execution Time */}
-                      <div className="px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Execution Time
-                        </span>
-                        <span className="text-red-500 text-xl font-bold">
-                          {msToSec(result.naive_approach.execution_time_ms)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Column B — OptiEngine (Right) */}
-                  <div className="flex flex-col">
-                    {/* Title bar */}
-                    <div className="border-b border-gray-800 px-4 py-2 bg-gray-900/50">
-                      <span className="text-emerald-400 text-sm uppercase tracking-[0.2em]">
-                        [ OPTIENGINE_OPTIMIZED ]
-                      </span>
-                    </div>
-                    {/* Stats grid */}
-                    <div className="flex flex-col">
-                      {/* Upgraded Complexity */}
-                      <div className="border-b border-gray-800 px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Upgraded Complexity
-                        </span>
-                        <span className="text-emerald-400 text-xl font-bold">
-                          {result.optiengine_approach.complexity}
-                        </span>
-                      </div>
-                      {/* Tokens Used */}
-                      <div className="border-b border-gray-800 px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Tokens Used
-                        </span>
-                        <span className="text-emerald-400 text-xl font-bold">
-                          {result.optiengine_approach.tokens_used}
-                        </span>
-                      </div>
-                      {/* Execution Time */}
-                      <div className="border-b border-gray-800 px-4 py-3">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600 block">
-                          Execution Time
-                        </span>
-                        <span className="text-emerald-400 text-xl font-bold">
-                          {msToSec(result.optiengine_approach.execution_time_ms)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Code Snippet — Terminal Block */}
-                    <div className="border-t border-emerald-900 bg-black flex-1 flex flex-col">
-                      <div className="border-b border-gray-800 px-4 py-2 flex justify-between items-center">
-                        <span className="text-[10px] uppercase tracking-widest text-gray-600">
-                          code_snippet
-                        </span>
-                        <span className="text-[10px] uppercase tracking-widest text-emerald-400/60">
-                          {result.optiengine_approach.language}
-                        </span>
-                      </div>
-                      <pre className="px-4 py-3 text-xs text-emerald-400/80 leading-relaxed overflow-auto flex-1 whitespace-pre">
-                        {result.optiengine_approach.code_snippet}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : loading ? (
-              <div className="flex flex-col gap-3 text-gray-600 p-6">
-                <div className="h-3 w-3/4 bg-gray-800 animate-brutalist-pulse" />
-                <div className="h-3 w-1/2 bg-gray-800 animate-brutalist-pulse" />
-                <div className="h-3 w-2/3 bg-gray-800 animate-brutalist-pulse" />
-                <p className="mt-4 text-[10px] uppercase tracking-widest text-gray-600">
-                  processing pipeline active...
-                </p>
-              </div>
-            ) : (
-              <div className="text-gray-700 flex flex-col gap-2 p-6">
-                <p className="text-[10px] uppercase tracking-widest">
-                  awaiting input...
-                </p>
-                <div className="mt-4 border border-gray-800 p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-2">
-                    capabilities
-                  </p>
-                  {[
-                    "Prompt compression",
-                    "Token optimization",
-                    "Clarity enhancement",
-                    "Latency reduction",
-                  ].map((cap) => (
-                    <div
-                      key={cap}
-                      className="py-1 border-b border-gray-800 last:border-b-0 text-xs text-gray-500"
-                    >
-                      → {cap}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Metrics grid */}
-          <div className="grid grid-cols-2 border-t border-gray-800">
-            {[
-              { label: "Tokens", value: prompt.split(/\s+/).filter(Boolean).length.toString() },
-              { label: "Latency", value: result ? msToSec(result.optiengine_approach.execution_time_ms) : loading ? "..." : "—" },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="border-r border-gray-800 last:border-r-0 px-4 py-3"
-              >
-                <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600 block">
-                  {label}
+              <span className={`${pixel} text-[10px] uppercase tracking-wider text-emerald-400`}>
+                DELIVERED
+              </span>
+            </div>
+            <div className="px-5 py-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-0 overflow-x-auto">
+              {/* Block 1: IDE */}
+              <div className="border-2 border-white/10 bg-[#0a0a0a] px-4 py-3 flex-shrink-0">
+                <span className={`${pixel} text-xs text-white/50 uppercase tracking-wider`}>
+                  Claude.exe / IDE
                 </span>
-                <span className="font-mono text-lg text-white">{value}</span>
               </div>
+
+              <ArrowRight className="text-cyan-400/40 w-6 h-6 mx-2 flex-shrink-0 hidden sm:block" />
+              <span className={`${pixel} text-cyan-400/40 text-xs sm:hidden text-center`}>───▶</span>
+
+              {/* Block 2: Intercept */}
+              <div className="border-2 border-cyan-500/30 bg-cyan-500/5 px-4 py-3 flex-shrink-0">
+                <span className={`${pixel} text-xs text-cyan-400 uppercase tracking-wider`}>
+                  OptiEngine Intercept
+                </span>
+              </div>
+
+              <ArrowRight className="text-cyan-400/40 w-6 h-6 mx-2 flex-shrink-0 hidden sm:block" />
+              <span className={`${pixel} text-cyan-400/40 text-xs sm:hidden text-center`}>───▶</span>
+
+              {/* Block 3: Vector Search */}
+              <div className="border-2 border-white/10 bg-[#0a0a0a] px-4 py-3 flex-shrink-0">
+                <span className={`${pixel} text-xs text-white/50 uppercase tracking-wider`}>
+                  ChromaDB Vector Search
+                </span>
+              </div>
+
+              <ArrowRight className="text-emerald-400/40 w-6 h-6 mx-2 flex-shrink-0 hidden sm:block" />
+              <span className={`${pixel} text-emerald-400/40 text-xs sm:hidden text-center`}>───▶</span>
+
+              {/* Block 4: Payload */}
+              <div className="border-2 border-emerald-500/50 bg-emerald-500/5 px-4 py-3 flex-shrink-0">
+                <span className={`${pixel} text-xs text-emerald-400 uppercase tracking-wider`}>
+                  Optimal {activeIntercept.optiengine_approach.language} Payload Served
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════
+            RESULT SECTION — Split-Screen Comparison
+            ═══════════════════════════════════════════════════════════ */}
+        {activeIntercept ? (
+          <section className="flex flex-col gap-4">
+            {/* Result Header */}
+            <div className="border-2 border-white/10 bg-[#111] p-5 shadow-brutal flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <span className={`${grotesk} text-[10px] uppercase tracking-[0.3em] text-white/40 block mb-1`}>
+                  Detected Problem Type
+                </span>
+                <span className={`${pixel} text-2xl sm:text-3xl text-white font-bold`}>
+                  {activeIntercept.problem_type}
+                </span>
+              </div>
+              <div className="sm:text-right">
+                <span className={`${grotesk} text-[10px] uppercase tracking-[0.3em] text-white/40 block mb-1`}>
+                  Match Confidence
+                </span>
+                <span className={`${pixel} text-4xl sm:text-5xl text-emerald-400 font-bold leading-none`}>
+                  {activeIntercept.match_confidence}
+                </span>
+              </div>
+            </div>
+
+            {/* Split Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* ── Column A: Naive AI ──────────────────────────── */}
+              <div className="border-2 border-red-500/40 bg-[#111] shadow-[6px_6px_0px_0px_rgba(220,38,38,1)] flex flex-col">
+                {/* Title bar */}
+                <div className="border-b-2 border-red-500/30 px-5 py-3 bg-red-500/5">
+                  <span className={`${pixel} text-sm text-red-500 uppercase tracking-wider`}>
+                    [ NAIVE_AI_APPROACH ]
+                  </span>
+                </div>
+
+                {/* Stats */}
+                <div className="flex flex-col">
+                  <div className="border-b-2 border-white/5 px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Time Complexity
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-red-500 font-black`}>
+                      {activeIntercept.naive_approach.complexity}
+                    </span>
+                  </div>
+                  <div className="border-b-2 border-white/5 px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Tokens Wasted
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-red-500 font-black`}>
+                      {activeIntercept.naive_approach.tokens_used.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Execution Time
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-red-500 font-black`}>
+                      {msToSec(activeIntercept.naive_approach.execution_time_ms)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Column B: OptiEngine ────────────────────────── */}
+              <div className="border-2 border-emerald-500/40 bg-[#111] shadow-[6px_6px_0px_0px_rgba(16,185,129,1)] flex flex-col">
+                {/* Title bar */}
+                <div className="border-b-2 border-emerald-500/30 px-5 py-3 bg-emerald-500/5">
+                  <span className={`${pixel} text-sm text-emerald-400 uppercase tracking-wider`}>
+                    [ OPTIENGINE_OPTIMIZED ]
+                  </span>
+                </div>
+
+                {/* Stats */}
+                <div className="flex flex-col">
+                  <div className="border-b-2 border-white/5 px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Upgraded Complexity
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-emerald-400 font-black`}>
+                      {activeIntercept.optiengine_approach.complexity}
+                    </span>
+                  </div>
+                  <div className="border-b-2 border-white/5 px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Tokens Used
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-emerald-400 font-black`}>
+                      {activeIntercept.optiengine_approach.tokens_used}
+                    </span>
+                  </div>
+                  <div className="border-b-2 border-white/5 px-5 py-4">
+                    <span className={`${grotesk} text-[10px] uppercase tracking-[0.25em] text-white/30 block mb-1`}>
+                      Execution Time
+                    </span>
+                    <span className={`${pixel} text-4xl sm:text-5xl text-emerald-400 font-black`}>
+                      {msToSec(activeIntercept.optiengine_approach.execution_time_ms)}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* ── PAYLOAD DELIVERED TO AGENT ─────────────────────── */}
+            <div className="border-2 border-white/10 bg-[#0a0a0a] shadow-[6px_6px_0px_0px_rgba(16,185,129,0.5)] border-l-4 border-l-emerald-500">
+              <div className="border-b-2 border-white/10 px-5 py-2.5 flex justify-between items-center">
+                <span className={`${pixel} text-sm text-emerald-400 uppercase tracking-wider`}>
+                  [ PAYLOAD_DELIVERED_TO_AGENT ]
+                </span>
+                <span className={`${grotesk} text-[10px] text-white/30 uppercase tracking-wider`}>
+                  {activeIntercept.optiengine_approach.language} • optimized
+                </span>
+              </div>
+              <pre className={`${grotesk} px-6 py-5 text-sm text-emerald-400/80 leading-relaxed overflow-auto whitespace-pre`}>
+                {activeIntercept.optiengine_approach.code_snippet}
+              </pre>
+            </div>
+          </section>
+        ) : (
+          /* Awaiting state — no data yet */
+          <section className="border-2 border-white/10 bg-[#111] p-6 shadow-brutal">
+            <div className="flex flex-col gap-4">
+              <p className={`${pixel} text-xs uppercase tracking-widest ${connectionStatus === "ONLINE" ? "text-emerald-400/30" : "text-white/20"
+                }`}>
+                {connectionStatus === "ONLINE"
+                  ? "MCP server connected. Awaiting intercept events..."
+                  : connectionStatus === "CONNECTING"
+                    ? "Establishing connection to MCP transport..."
+                    : "WebSocket disconnected. No data available."}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  "Intercept",
+                  "Tokenize",
+                  "Optimize",
+                  "Deploy",
+                ].map((step, i) => (
+                  <div key={step} className="border border-white/5 bg-[#0d0d0d] px-3 py-2.5 flex items-center gap-2">
+                    <span className={`${pixel} text-xs text-white/15`}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className={`${grotesk} text-[10px] uppercase tracking-wider text-white/25`}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════
+            FOOTER
+            ═══════════════════════════════════════════════════════════ */}
+        <footer className="border-t border-white/5 pt-4 pb-2 flex flex-col sm:flex-row sm:justify-between gap-2">
+          <div className="flex items-center gap-4">
+            {[
+              { label: "Engine", value: "v0.1" },
+              { label: "Protocol", value: "MCP/2.0" },
+              { label: "Transport", value: "WebSocket" },
+            ].map(({ label, value }) => (
+              <span key={label} className={`${grotesk} text-[10px] uppercase tracking-wider text-white/20`}>
+                {label}: <span className="text-white/40">{value}</span>
+              </span>
             ))}
           </div>
-        </div>
-      </main>
+          <span className={`${pixel} text-[10px] text-white/15 uppercase`}>
+            ws://localhost:8000/ws/telemetry
+          </span>
+        </footer>
 
-      {/* ═══════════════════════════════════════════════════════════
-          FOOTER — Bottom Grid Block
-          ═══════════════════════════════════════════════════════════ */}
-      <footer className="border border-gray-800 border-t-0 grid grid-cols-2 md:grid-cols-4">
-        {[
-          { label: "Engine", value: "OptiEngine v0.1" },
-          { label: "Protocol", value: "INTERCEPT/2.0" },
-          { label: "Uptime", value: "99.97%" },
-          { label: "Region", value: "GLOBAL-EDGE" },
-        ].map(({ label, value }) => (
-          <div
-            key={label}
-            className="border-r border-gray-800 last:border-r-0 px-4 py-3"
-          >
-            <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600 block">
-              {label}
-            </span>
-            <span className="font-mono text-xs text-gray-400">{value}</span>
-          </div>
-        ))}
-      </footer>
+      </div>
     </div>
   );
 }

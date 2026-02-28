@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["700"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
-  title: "OPTIENGINE — Algorithmic Optimization Engine",
-  description: "Intercept & Upgrade your prompts with algorithmic optimization.",
+  title: "OPTIENGINE — MCP Algorithmic Optimization",
+  description: "Intercept, analyze, and upgrade AI prompts with algorithmic optimization. MCP-compatible developer tool.",
 };
 
 export default function RootLayout({
@@ -25,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistMono.variable} ${spaceGrotesk.variable} antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${inter.variable} antialiased`}>
         {children}
       </body>
     </html>
