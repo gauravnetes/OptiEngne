@@ -1,0 +1,576 @@
+/* ═══════════════════════════════════════════════════════════
+   OPTIENGINE GUARDIAN — SWISS BRUTALIST DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface-2: #1a1a1a;
+    --border: #ffffff;
+    --border-dim: #333333;
+    --text: #ffffff;
+    --text-dim: #888888;
+    --text-faint: #444444;
+    --accent-ok: #00ff88;
+    --accent-err: #ff3333;
+    --accent-warn: #ffcc00;
+    --accent-blue: #4f8fff;
+    --font-mono: "Courier New", Courier, monospace;
+    --border-width: 2px;
+}
+
+html,
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    height: 100%;
+    overflow-x: hidden;
+    user-select: none;
+}
+
+/* ═══════════════════════════════════════════════ SCROLLBAR */
+
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-dim);
+    border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════ HEADER */
+
+#header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-bottom: var(--border-width) solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+#header-logo {
+    font-size: 20px;
+    color: var(--text);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+#header-title {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    line-height: 1.2;
+    flex: 1;
+    text-transform: uppercase;
+}
+
+#header-sub {
+    color: var(--text-dim);
+    font-size: 9px;
+}
+
+#refresh-btn {
+    background: transparent;
+    border: var(--border-width) solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    transition: none;
+    flex-shrink: 0;
+}
+
+#refresh-btn:hover {
+    background: var(--border);
+    color: var(--bg);
+}
+
+#refresh-btn:active {
+    box-shadow: 2px 2px 0 var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════ ORG BAR */
+
+#org-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--surface-2);
+    border-bottom: var(--border-width) solid var(--border-dim);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+}
+
+#org-label,
+#domain-label {
+    color: var(--text-faint);
+    flex-shrink: 0;
+}
+
+#org-value,
+#domain-value {
+    color: var(--accent-ok);
+    font-weight: bold;
+    letter-spacing: 0.12em;
+    flex-shrink: 0;
+}
+
+#domain-label {
+    margin-left: 8px;
+}
+
+/* Push dot to the right */
+#org-bar .dot {
+    margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════ STATUS DOT */
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 0;
+    /* square, not round — brutalist */
+    flex-shrink: 0;
+    border: 1px solid transparent;
+}
+
+.dot--idle {
+    background: var(--text-faint);
+    border-color: var(--border-dim);
+}
+
+.dot--loading {
+    background: var(--accent-warn);
+    animation: blink 0.7s step-end infinite;
+}
+
+.dot--ok {
+    background: var(--accent-ok);
+}
+
+.dot--error {
+    background: var(--accent-err);
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+/* ═══════════════════════════════════════════════ MAIN */
+
+#main {
+    padding: 0;
+    overflow-y: auto;
+    height: calc(100vh - 72px);
+}
+
+/* ═══════════════════════════════════════════════ STATE MACHINE */
+
+.state {
+    display: none;
+}
+
+.state.active {
+    display: block;
+}
+
+/* ═══════════════════════════════════════════════ IDLE STATE */
+
+#state-idle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+#state-idle.active {
+    display: flex;
+}
+
+.idle-box {
+    text-align: center;
+    padding: 24px;
+    border: var(--border-width) dashed var(--border-dim);
+    margin: 20px;
+}
+
+.idle-icon {
+    font-size: 32px;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+    animation: pulse 2s step-end infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.idle-text {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    line-height: 2;
+}
+
+/* ═══════════════════════════════════════════════ LOADING STATE */
+
+#state-loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+#state-loading.active {
+    display: flex;
+}
+
+.loading-box {
+    text-align: center;
+    padding: 24px;
+}
+
+.spinner {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.spinner span {
+    display: inline-block;
+    font-size: 18px;
+    color: var(--accent-warn);
+    animation: spinnerPop 1s step-end infinite;
+}
+
+.spinner span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.spinner span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes spinnerPop {
+
+    0%,
+    100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1.0;
+        transform: scale(1.2);
+    }
+}
+
+.loading-text {
+    color: var(--accent-warn);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    animation: blink 0.8s step-end infinite;
+}
+
+/* ═══════════════════════════════════════════════ ERROR STATE */
+
+#state-error {
+    display: none;
+    padding: 16px;
+}
+
+#state-error.active {
+    display: block;
+}
+
+.error-box {
+    border: var(--border-width) solid var(--accent-err);
+    padding: 14px;
+    box-shadow: 4px 4px 0 var(--accent-err);
+}
+
+.error-icon {
+    font-size: 24px;
+    color: var(--accent-err);
+    margin-bottom: 6px;
+}
+
+.error-title {
+    color: var(--accent-err);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--accent-err);
+    padding-bottom: 6px;
+}
+
+.error-message {
+    color: var(--text);
+    font-size: 10px;
+    word-break: break-word;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #1a0000;
+    border: 1px solid #440000;
+}
+
+.error-hint {
+    color: var(--text-faint);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════ RENDER STATE */
+
+#state-render {
+    display: none;
+}
+
+#state-render.active {
+    display: block;
+}
+
+/* ═══════════════════════════════════════════════ SECTIONS */
+
+.section {
+    margin: 0;
+    border-bottom: var(--border-width) solid var(--border-dim);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-dim);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.section-icon {
+    color: var(--text-dim);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.section-title {
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    flex: 1;
+}
+
+.section-count {
+    font-size: 9px;
+    color: var(--bg);
+    background: var(--text);
+    padding: 1px 5px;
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* ═══════════════════════════════════════════════ CHECKLIST */
+
+#checklist-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-dim);
+    cursor: default;
+    transition: none;
+}
+
+.checklist-item:hover {
+    background: var(--surface-2);
+}
+
+.checklist-item:hover .item-check {
+    content: "✓";
+    color: var(--accent-ok);
+}
+
+.item-index {
+    color: var(--text-faint);
+    font-size: 9px;
+    flex-shrink: 0;
+    padding-top: 1px;
+    min-width: 18px;
+}
+
+.item-text {
+    color: var(--text);
+    font-size: 10px;
+    line-height: 1.6;
+    flex: 1;
+    word-break: break-word;
+}
+
+.item-check {
+    color: var(--text-faint);
+    font-size: 12px;
+    flex-shrink: 0;
+    padding-top: 0;
+}
+
+.checklist-item:hover .item-check::before {
+    content: "✓";
+    color: var(--accent-ok);
+}
+
+.checklist-empty {
+    padding: 16px 10px;
+    color: var(--text-faint);
+    font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════════ DIAGRAM */
+
+#diagram-container {
+    padding: 10px;
+    background: var(--surface-2);
+    min-height: 80px;
+}
+
+#mermaid-target {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Force Mermaid SVG to fit the panel */
+#mermaid-target svg {
+    max-width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+}
+
+/* Override Mermaid's internal white backgrounds */
+#mermaid-target .node rect,
+#mermaid-target .node circle,
+#mermaid-target .node polygon {
+    fill: var(--surface) !important;
+    stroke: var(--border) !important;
+    stroke-width: 2px !important;
+}
+
+#mermaid-target .label,
+#mermaid-target .nodeLabel,
+#mermaid-target text {
+    font-family: var(--font-mono) !important;
+    font-size: 11px !important;
+    fill: var(--text) !important;
+}
+
+#mermaid-target .edgePath .path {
+    stroke: var(--border) !important;
+    stroke-width: 1.5px !important;
+}
+
+#mermaid-target .edgeLabel {
+    background: var(--bg) !important;
+    color: var(--text-dim) !important;
+}
+
+.diagram-error {
+    color: var(--accent-err);
+    font-size: 10px;
+    padding: 8px 0;
+}
+
+.diagram-raw {
+    color: var(--text-dim);
+    font-size: 9px;
+    word-break: break-all;
+    white-space: pre-wrap;
+    padding: 8px;
+    border: 1px dashed var(--border-dim);
+    margin-top: 6px;
+    background: var(--surface);
+}
+
+.no-diagram {
+    color: var(--text-faint);
+    font-size: 10px;
+    padding: 12px 0;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════ FILE PATH BAR */
+
+#file-path-bar {
+    padding: 5px 10px;
+    background: var(--surface);
+    border-top: 1px solid var(--border-dim);
+}
+
+#file-path-text {
+    color: var(--text-faint);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+}
+
+/* ═══════════════════════════════════════════════ UTILITY */
+
+/* Sharp selection highlight */
+::selection {
+    background: var(--border);
+    color: var(--bg);
+}

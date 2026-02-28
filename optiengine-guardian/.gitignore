@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Compiled output
+out/
+dist/
+
+# Environment
+.env
+.env.local
+
+# VS Code extension packaging
+*.vsix
+
+# Source maps
+*.js.map
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
