@@ -17,51 +17,34 @@ logging.basicConfig(
 logger = logging.getLogger("ContextEngine.Main")
 
 
-# -------------------------------------------------------------------
-# Lifespan — warm up ChromaDB and embedding model at startup
-# so the first real request isn't slow
-# -------------------------------------------------------------------
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("ContextEngine starting up...")
     try:
         from app.db.chroma_client import get_chroma_client, get_embedding_function
-        get_chroma_client()       # Initialize ChromaDB connection
-        get_embedding_function()  # Download / load embedding model
+        get_chroma_client()
+        get_embedding_function()
         logger.info("ChromaDB and embedding model ready.")
     except Exception as e:
         logger.critical(f"Startup failed during warm-up: {e}", exc_info=True)
         raise
-
-    yield  # Server is running
-
+    yield
     logger.info("ContextEngine shutting down.")
 
 
-# -------------------------------------------------------------------
-# App
-# -------------------------------------------------------------------
-
 app = FastAPI(
     title="ContextEngine / OptiEngine",
-    description=(
-        "A local MCP server that intercepts developer prompts and rewrites them "
-        "to enforce organizational coding standards via RAG + LLM synthesis."
-    ),
     version="0.1.0",
     lifespan=lifespan,
 )
 
-# CORS — needed for the Streamlit control plane to call the REST API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Tighten this in production to your Streamlit host
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register the API routes under /api/v1
 app.include_router(router, prefix="/api/v1")
 
 
@@ -72,4 +55,5 @@ async def root():
         "status": "online",
         "docs": "/docs",
         "health": "/api/v1/health",
+        "mcp": "runs via stdio — see app/api/mcp_server.py",
     }

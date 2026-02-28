@@ -1,0 +1,55 @@
+# Integration Guide: ContextEngine Testbeds
+
+This guide explains how to integrate the newly built **NexusWeb** and **SynthAI** testbeds with your existing **ContextEngine** MCP server.
+
+## 1. Understanding the Architecture
+
+Your ContextEngine backend isolates knowledge using **Domain Collections** in ChromaDB (`guidelines_web`, `guidelines_ai`, `guidelines_backend`, etc.). 
+
+To support this architectural model, the two testbeds have been configured to automatically pass the `OPTIENGINE_DOMAIN` environment variable to your MCP server when opened in the IDE:
+* **NexusWeb Testbed** → Passes `OPTIENGINE_DOMAIN="Web"`
+* **SynthAI Testbed** → Passes `OPTIENGINE_DOMAIN="AI"`
+
+## 2. Ingesting the Rules
+
+Before testing, you must push the provided rule sets through your ingestion pipeline so they land in the appropriate ChromaDB collections.
+
+1. Locate [nexusweb_rules.json](file:///c:/Users/LENOVO/OneDrive/Desktop/optiengine_org/nexusweb_rules.json) and ingest its 16 rules via your `/api/v1/ingest` endpoint. Because they have `"domain": "Web"`, your backend will route them to the `guidelines_web` collection.
+2. Locate [synthai_rules.json](file:///c:/Users/LENOVO/OneDrive/Desktop/optiengine_org/synthai_rules.json) and ingest its 17 rules. Because they have `"domain": "AI"`, your backend will route them to the `guidelines_ai` collection.
+
+*Note: The ingestion script must use your `INGEST_API_KEY` to authenticate against the ingest endpoint.*
+
+## 3. Configuring the MCP Server
+
+Ensure your FastMCP tool (`enhance_development_prompt`) reads the domain from the environment. Since the testbeds pass `OPTIENGINE_DOMAIN` rather than hardcoding it in the tool prompt, your tool execution function can grab it:
+
+```python
+import os
+
+@mcp.tool()
+def enhance_development_prompt(junior_prompt: str) -> str:
+    # Cursor passes this automatically based on the open workspace
+    domain = os.getenv("OPTIENGINE_DOMAIN", "Global") 
+    
+    # 1. Sanitize prompt
+    # 2. Retrieve from guidelines_global AND guidelines_{domain}
+    # 3. Enhance with Groq
+    ...
+```
+
+## 4. Running the End-to-End Test
+
+### Test 1: The "Web" Domain (NexusWeb)
+1. Ensure your FastAPI root endpoint (`localhost:8000`) is running.
+2. Open the `optiengine_org/nexus-web/` folder **directly** as the root workspace in Cursor.
+3. Open [src/app/page.js](file:///c:/Users/LENOVO/OneDrive/Desktop/optiengine_org/novapay/src/app/page.js) and prompt Cursor:
+   > *"Write an API hook to fetch sales data."*
+4. **Expected Result:** Cursor executes the MCP tool. ContextEngine detects `domain="Web"`, retrieves from `guidelines_web`, and generates code using **React Query** and **Zod** validation (mandated by NexusWeb rules).
+
+### Test 2: The "AI" Domain (SynthAI)
+1. Open the `optiengine_org/synth-ai/` folder **directly** as the root workspace in a new Cursor window.
+2. Open [src/app/page.js](file:///c:/Users/LENOVO/OneDrive/Desktop/optiengine_org/novapay/src/app/page.js) and prompt Cursor:
+   > *"Write a route to generate a blog post using the LLM."*
+3. **Expected Result:** Cursor executes the MCP tool. ContextEngine detects `domain="AI"`, retrieves from `guidelines_ai`, and generates code that implements **Server-Sent Events (SSE) streaming** and pushes the user prompt through the `PromptSanitizer` (mandated by SynthAI rules).
+
+By keeping NexusWeb and SynthAI structurally distinct, you create the perfect multi-tenant verification environment for ContextEngine's RAG and domain-isolation logic.
