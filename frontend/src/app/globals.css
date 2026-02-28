@@ -1,62 +1,90 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #0a0a0a;
+  --color-foreground: #d1d5db;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-brutalist: var(--font-space-grotesk), monospace;
-  --font-brutalist-mono: var(--font-geist-mono), monospace;
 }
 
 :root {
-  --background: #030712;
+  --background: #0a0a0a;
   --foreground: #d1d5db;
+  --card: #111111;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent-cyan: #22d3ee;
+  --accent-red: #ef4444;
+  --accent-green: #34d399;
+  --shadow-offset: 4px;
+}
+
+* {
+  border-radius: 0 !important;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-brutalist-mono);
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Kill all rounded corners globally */
-* {
-  border-radius: 0 !important;
+/* ── Dotted Grid Texture ─────────────────────────────────────────── */
+.bg-grid-texture {
+  position: relative;
 }
 
-/* Scrollbar brutalist styling */
+.bg-grid-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+.bg-grid-texture>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Hard Drop Shadows ───────────────────────────────────────────── */
+.shadow-brutal {
+  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.15);
+}
+
+.shadow-brutal-cyan {
+  box-shadow: 4px 4px 0px 0px rgba(34, 211, 238, 0.4);
+}
+
+.shadow-brutal-red {
+  box-shadow: 4px 4px 0px 0px rgba(239, 68, 68, 0.4);
+}
+
+.shadow-brutal-green {
+  box-shadow: 4px 4px 0px 0px rgba(52, 211, 153, 0.4);
+}
+
+.shadow-brutal-white {
+  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.25);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #030712;
+  background: #0a0a0a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: #333;
 }
 
-/* Textarea resize handle */
-textarea {
-  resize: vertical;
-}
-
-/* Scanline animation */
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-
-  100% {
-    transform: translateY(100vh);
-  }
-}
-
-/* Blink animation for cursor */
-@keyframes blink {
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes blink-cursor {
 
   0%,
   100% {
@@ -69,11 +97,10 @@ textarea {
 }
 
 .animate-blink {
-  animation: blink 1s step-end infinite;
+  animation: blink-cursor 1s step-end infinite;
 }
 
-/* Subtle pulse for loading state */
-@keyframes brutalist-pulse {
+@keyframes brutal-pulse {
 
   0%,
   100% {
@@ -81,10 +108,19 @@ textarea {
   }
 
   50% {
-    opacity: 0.6;
+    opacity: 0.7;
   }
 }
 
-.animate-brutalist-pulse {
-  animation: brutalist-pulse 1.2s ease-in-out infinite;
+.animate-brutal-pulse {
+  animation: brutal-pulse 1.2s ease-in-out infinite;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────── */
+textarea {
+  resize: vertical;
+}
+
+textarea::placeholder {
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
 }
