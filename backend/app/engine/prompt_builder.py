@@ -29,7 +29,7 @@ def _get_groq_client() -> Groq:
 # Constants
 # -------------------------------------------------------------------
 
-MODEL = "llama3-8b-8192"
+MODEL = "llama-3.1-8b-instant"
 TEMPERATURE = 0.1       # Low — you want deterministic rule injection, not creativity
 MAX_TOKENS = 2048       # Enhanced prompts can be long
 MAX_RETRIES = 2
