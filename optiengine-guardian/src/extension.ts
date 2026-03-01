@@ -6,167 +6,86 @@ let mcpClient: McpClient | undefined;
 let guardianPanel: GuardianPanel | undefined;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-export async function activate(context: vscode.ExtensionContext) {
-    console.log("[OptiEngine Guardian] Activating...");
+export function activate(context: vscode.ExtensionContext) {
+    console.log("[OptiEngine Guardian] Activating extension...");
 
-    // 1. Register the WebView Sidebar Provider
+    // 1. Register Webview Provider IMMEDIATELY
     guardianPanel = new GuardianPanel(context.extensionUri);
-
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
-            "optiengine-guardian.panel",
+            GuardianPanel.viewType,
             guardianPanel,
             { webviewOptions: { retainContextWhenHidden: true } }
         )
     );
 
-    // 2. Initialize MCP Client
+    // 2. Initialize MCP ASYNCHRONOUSLY to prevent 10s activation timeout
     const config = vscode.workspace.getConfiguration("optiengine");
     const serverPath = config.get<string>("serverPath", "");
 
-    if (!serverPath) {
-        vscode.window.showWarningMessage(
-            "OptiEngine Guardian: Set optiengine.serverPath in VS Code settings to enable MCP."
-        );
-    } else {
-        mcpClient = new McpClient(
-            serverPath,
-            config.get<string>("pythonPath", "python3")
-        );
-        await initializeMcpClient();
+    if (serverPath) {
+        mcpClient = new McpClient(serverPath, config.get<string>("pythonPath", "python3"));
+        mcpClient.connect().then(() => {
+            console.log("[OptiEngine Guardian] MCP connect promise resolved.");
+            vscode.window.setStatusBarMessage("$(shield) OptiEngine", 3000);
+        }).catch(err => {
+            console.error("[OptiEngine Guardian] MCP connect failed:", err);
+        });
     }
 
     // 3. Register Commands
     context.subscriptions.push(
-        vscode.commands.registerCommand("optiengine-guardian.refresh", async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                await triggerAnalysis(editor.document);
+        vscode.commands.registerCommand("optiengine-guardian.refresh", () => {
+            if (vscode.window.activeTextEditor) {
+                triggerAnalysis(vscode.window.activeTextEditor.document);
             }
         }),
-
-        vscode.commands.registerCommand("optiengine-guardian.clearPanel", () => {
-            guardianPanel?.sendMessage({ type: "IDLE" });
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => triggerAnalysis(doc), 1500);
+        }),
+        vscode.window.onDidChangeActiveTextEditor(editor => {
+            if (!editor) guardianPanel?.sendMessage({ type: "IDLE" });
+            else guardianPanel?.sendMessage({ type: "LOADING" });
         })
     );
 
-    // 4. Event Listeners
-    context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument(async (document) => {
-            clearDebounce();
-            const debounceMs = vscode.workspace
-                .getConfiguration("optiengine")
-                .get<number>("debounceMs", 1500);
-            debounceTimer = setTimeout(async () => {
-                await triggerAnalysis(document);
-            }, debounceMs);
-        }),
-
-        vscode.window.onDidChangeActiveTextEditor(async (editor) => {
-            if (!editor) {
-                guardianPanel?.sendMessage({ type: "IDLE" });
-                return;
-            }
-            guardianPanel?.sendMessage({ type: "LOADING" });
-        }),
-
-        vscode.workspace.onDidChangeConfiguration(async (e) => {
-            if (e.affectsConfiguration("optiengine")) {
-                await reinitializeMcpClient();
-            }
-        })
-    );
-
-    console.log("[OptiEngine Guardian] Active.");
+    console.log("[OptiEngine Guardian] Activation complete. Awaiting user actions.");
 }
 
 async function triggerAnalysis(document: vscode.TextDocument) {
-    if (!mcpClient || !guardianPanel) { return; }
+    if (!mcpClient || !guardianPanel) return;
 
-    const supportedLanguages = [
-        "typescript", "javascript", "python", "go", "java",
-        "csharp", "rust", "cpp", "c", "typescriptreact", "javascriptreact"
-    ];
-
-    if (!supportedLanguages.includes(document.languageId)) { return; }
+    // Ignore unsupported files
+    const supported = ["typescript", "javascript", "python", "go", "java", "csharp", "rust", "cpp", "c", "typescriptreact", "javascriptreact"];
+    if (!supported.includes(document.languageId)) return;
 
     guardianPanel.sendMessage({ type: "LOADING" });
 
-    const filePath = document.uri.fsPath;
-    const content = document.getText();
-    const orgId = resolveOrgId(filePath);
-
     try {
+        console.log(`[OptiEngine Guardian] Sending tool call for ${document.uri.fsPath}`);
         const result = await mcpClient.getOrgContext({
-            file_path: filePath,
-            content: content,
-            org_id: orgId,
+            file_path: document.uri.fsPath,
+            content: document.getText(),
+            org_id: getWorkspaceOrg()
         });
         guardianPanel.sendMessage({ type: "RENDER_CONTEXT", payload: result });
     } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown MCP error";
-        console.error("[OptiEngine Guardian] MCP error:", message);
-        guardianPanel.sendMessage({ type: "ERROR", message });
+        console.error("[OptiEngine Guardian] Tool call error:", err);
+        guardianPanel.sendMessage({ type: "ERROR", message: err instanceof Error ? err.message : String(err) });
     }
 }
 
-function resolveOrgId(filePath: string): string {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders?.length) { return "global"; }
-
-    const wsRoot = workspaceFolders[0].uri.fsPath;
-    try {
-        const fs = require("fs") as typeof import("fs");
-        const configPath = `${wsRoot}/optiengine.config.json`;
-        if (fs.existsSync(configPath)) {
-            const cfg = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-            if (cfg.org_id) { return cfg.org_id as string; }
-        }
-    } catch { /* fall through */ }
-
-    const folderName = workspaceFolders[0].name.toLowerCase();
-    const knownOrgs = ["novapay", "medicore"];
-    return knownOrgs.find((o) => folderName.includes(o)) ?? "global";
+function getWorkspaceOrg(): string {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders?.length) return "global";
+    const name = folders[0].name.toLowerCase();
+    if (name.includes("novapay")) return "novapay";
+    if (name.includes("medicore")) return "medicore";
+    return "global";
 }
 
-async function initializeMcpClient() {
-    if (!mcpClient) { return; }
-    try {
-        await mcpClient.connect();
-        console.log("[OptiEngine Guardian] MCP connected.");
-        vscode.window.setStatusBarMessage("$(shield) OptiEngine: Connected", 3000);
-    } catch (err) {
-        console.error("[OptiEngine Guardian] MCP connect failed:", err);
-        vscode.window.showErrorMessage(
-            "OptiEngine Guardian: Could not connect to MCP server. Check optiengine.serverPath."
-        );
-    }
-}
-
-async function reinitializeMcpClient() {
-    if (mcpClient) {
-        await mcpClient.disconnect();
-        mcpClient = undefined;
-    }
-    const config = vscode.workspace.getConfiguration("optiengine");
-    const serverPath = config.get<string>("serverPath", "");
-    if (serverPath) {
-        mcpClient = new McpClient(
-            serverPath,
-            config.get<string>("pythonPath", "python3")
-        );
-        await initializeMcpClient();
-    }
-}
-
-function clearDebounce() {
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = undefined;
-    }
-}
-
-export async function deactivate() {
-    clearDebounce();
-    if (mcpClient) { await mcpClient.disconnect(); }
+export function deactivate() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (mcpClient) mcpClient.disconnect();
 }
