@@ -419,6 +419,24 @@ body {
     text-align: center;
 }
 
+.section-action {
+    background: transparent;
+    color: var(--text-faint);
+    border: 1px solid var(--border-dim);
+    font-family: inherit;
+    font-size: 9px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.1em;
+}
+
+.section-action:hover {
+    color: var(--text);
+    border-color: var(--text);
+    background: var(--surface-2);
+}
+
 /* ═══════════════════════════════════════════════ CHECKLIST */
 
 #checklist-list {

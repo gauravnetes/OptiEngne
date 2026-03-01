@@ -127,7 +127,9 @@ export class GuardianPanel implements vscode.WebviewViewProvider {
       </div>
       <div class="section">
         <div class="section-header">
-          <span class="section-icon">◫</span><span class="section-title">ARCHITECTURE DIAGRAM</span>
+          <span class="section-icon">◫</span>
+          <span class="section-title">ARCHITECTURE DIAGRAM</span>
+          <button id="download-svg-btn" class="section-action" title="Download as SVG">DOWNLOAD SVG</button>
         </div>
         <div id="diagram-container">
           <div id="diagram-error" style="display:none;" class="diagram-error">⚠ Diagram render failed</div>
@@ -158,12 +160,34 @@ export class GuardianPanel implements vscode.WebviewViewProvider {
         if (el) el.classList.toggle("active", key === name);
       });
     }
+
+    // ── SVG Download Logic
+    document.getElementById("download-svg-btn")?.addEventListener("click", () => {
+      const svgNode = document.querySelector("#mermaid-target svg");
+      if (!svgNode) return;
+      
+      // Clone so we don't modify the visible DOM
+      const clone = svgNode.cloneNode(true);
+      // Give it a transparent background for maximum utility (or hardcode brutalist #0a0a0a)
+      clone.style.backgroundColor = "#0a0a0a"; 
+      
+      const svgData = new XMLSerializer().serializeToString(clone);
+      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "optiengine-architecture.svg";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
     async function renderMermaid(diagramStr) {
       const target = document.getElementById("mermaid-target");
       const err = document.getElementById("diagram-error");
       if (!target) return;
       target.innerHTML = "";
-      if (err) err.style.display = "none";
       if (!diagramStr || !diagramStr.trim()) {
         target.innerHTML = '<div class="no-diagram">No diagram returned</div>';
         return;

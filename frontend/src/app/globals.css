@@ -1,90 +1,124 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #d1d5db;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ────────────────────────────────────────────────────────────────────
+   NEO-BRUTALIST DESIGN SYSTEM
+   Rules: flat colors · thick borders · hard offset shadows
+          NO gradients · NO glows · NO blur
+   Palette: dark bg · flat orange · flat sky · white
+──────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #d1d5db;
-  --card: #111111;
-  --border: rgba(255, 255, 255, 0.1);
-  --accent-cyan: #22d3ee;
-  --accent-red: #ef4444;
-  --accent-green: #34d399;
+  --bg: #0c0c0c;
+  --bg-card: #111111;
+  --bg-card-2: #161616;
+
+  --orange: #ff5c00;
+  --sky: #00c2ff;
+  --white: #f0f0f0;
+  --muted: #888888;
+  --faint: #444444;
+
+  --border: #f0f0f0;
+  /* main thick border color */
+  --border-dim: #2a2a2a;
+  /* subtle dividers */
+
   --shadow-offset: 4px;
+  --shadow-color: #f0f0f0;
+  /* hard drop shadows in border color */
 }
 
-* {
-  border-radius: 0 !important;
+/* ─── Base ─────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--white);
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+
+  /* Dotted grid — dark theme version */
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  background-attachment: fixed;
 }
 
-/* ── Dotted Grid Texture ─────────────────────────────────────────── */
-.bg-grid-texture {
-  position: relative;
+/* ─── Hard Drop Shadows ─────────────────────────────────────────────── */
+.shadow-hard {
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
 }
 
-.bg-grid-texture::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
+.shadow-hard-orange {
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--orange);
 }
 
-.bg-grid-texture>* {
-  position: relative;
-  z-index: 1;
+.shadow-hard-sky {
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--sky);
 }
 
-/* ── Hard Drop Shadows ───────────────────────────────────────────── */
-.shadow-brutal {
-  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.15);
-}
-
-.shadow-brutal-cyan {
-  box-shadow: 4px 4px 0px 0px rgba(34, 211, 238, 0.4);
-}
-
-.shadow-brutal-red {
-  box-shadow: 4px 4px 0px 0px rgba(239, 68, 68, 0.4);
-}
-
-.shadow-brutal-green {
-  box-shadow: 4px 4px 0px 0px rgba(52, 211, 153, 0.4);
-}
-
-.shadow-brutal-white {
-  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.25);
-}
-
-/* ── Scrollbar ───────────────────────────────────────────────────── */
+/* ─── Scrollbar ─────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: var(--bg);
+  border-left: 2px solid var(--border-dim);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--faint);
+  border: 1px solid var(--border-dim);
 }
 
-/* ── Animations ──────────────────────────────────────────────────── */
-@keyframes blink-cursor {
+::-webkit-scrollbar-thumb:hover {
+  background: var(--orange);
+}
+
+/* ─── Animations ────────────────────────────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blink {
 
   0%,
   100% {
@@ -96,31 +130,16 @@ body {
   }
 }
 
-.animate-blink {
-  animation: blink-cursor 1s step-end infinite;
-}
-
-@keyframes brutal-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
+@keyframes marquee {
+  from {
+    transform: translateX(0);
   }
 
-  50% {
-    opacity: 0.7;
+  to {
+    transform: translateX(-50%);
   }
 }
 
-.animate-brutal-pulse {
-  animation: brutal-pulse 1.2s ease-in-out infinite;
-}
-
-/* ── Textarea ────────────────────────────────────────────────────── */
 textarea {
   resize: vertical;
-}
-
-textarea::placeholder {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
 }
