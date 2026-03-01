@@ -46,9 +46,10 @@ const C = {
   card2: "#161616",
   orange: "#ff5c00",
   sky: "#00c2ff",
-  white: "#f0f0f0",
-  muted: "#888888",
-  faint: "#444444",
+  white: "#ffffff",
+  light: "#e0e0e0",
+  muted: "#a0a0a0",
+  faint: "#666666",
   red: "#ff3b3b",
   green: "#00d26a",
   purple: "#b57bee",
@@ -129,9 +130,9 @@ function CodeBlock({ code, label, accent }: { code: string; label: string; accen
           {copied ? "COPIED!" : "COPY"}
         </button>
       </div>
-      <pre style={{ margin: 0, padding: 16, fontSize: 11, color: C.muted, lineHeight: 1.75, overflowX: "auto", overflowY: "auto", maxHeight: 360, whiteSpace: "pre-wrap", wordBreak: "break-word", flex: 1 }}>
+      <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", fontSize: 13, lineHeight: 1.7, fontFamily: "'JetBrains Mono', monospace", color: C.muted, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
         {code || "Waiting for generation…"}
-      </pre>
+      </div>
     </div>
   );
 }
@@ -280,8 +281,8 @@ export default function LiveDemoDashboard() {
               OPTI
               <span style={{ color: C.orange }}>ENGINE</span>
             </div>
-            <div style={{ marginTop: 14, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ fontSize: 13, color: C.muted, maxWidth: 520, lineHeight: 1.6 }}>
+            <div style={{ marginTop: 16, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ fontSize: 18, color: C.light, maxWidth: 640, lineHeight: 1.5 }}>
                 Intercept junior prompts, inject org standards, compare AI output quality — in real-time.
               </div>
               {/* stat chips */}
@@ -292,14 +293,14 @@ export default function LiveDemoDashboard() {
                   { val: "0ms", label: "Overhead", color: C.green },
                 ].map(s => (
                   <div key={s.val} style={{
-                    padding: "6px 14px",
+                    padding: "8px 16px",
                     border: `2px solid ${s.color}`,
                     boxShadow: sh(s.color, 3),
                     background: C.card,
-                    display: "flex", alignItems: "baseline", gap: 7,
+                    display: "flex", alignItems: "baseline", gap: 8,
                   }}>
-                    <span style={{ fontSize: 17, fontWeight: 900, color: s.color, fontFamily: "monospace" }}>{s.val}</span>
-                    <span style={{ fontSize: 10, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</span>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: s.color, fontFamily: "monospace" }}>{s.val}</span>
+                    <span style={{ fontSize: 12, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</span>
                   </div>
                 ))}
               </div>
@@ -323,17 +324,17 @@ export default function LiveDemoDashboard() {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 style={{
-                  padding: "10px 22px",
+                  padding: "12px 28px",
                   border: "none",
                   borderRight: i === 0 ? `2px solid ${C.borderDim}` : "none",
-                  cursor: "pointer", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em",
+                  cursor: "pointer", fontSize: 16, fontWeight: 700, letterSpacing: "0.05em",
                   background: tab === t.id ? C.orange : C.card,
-                  color: tab === t.id ? C.bg : C.muted,
-                  display: "flex", alignItems: "center", gap: 8,
+                  color: tab === t.id ? C.white : C.light,
+                  display: "flex", alignItems: "center", gap: 10,
                   transition: "background 0.15s, color 0.15s",
                 }}
               >
-                <span>{t.icon}</span>{t.label}
+                <span style={{ fontSize: 18 }}>{t.icon}</span>{t.label}
               </button>
             ))}
           </div>
@@ -371,13 +372,13 @@ export default function LiveDemoDashboard() {
                   <textarea
                     value={prompt}
                     onChange={e => setPrompt(e.target.value)}
-                    rows={3}
+                    rows={4}
                     style={{
                       width: "100%", background: C.bg,
                       border: `2px solid ${C.borderDim}`,
-                      padding: "12px 14px", color: C.white,
-                      fontSize: 12, fontFamily: "'JetBrains Mono', monospace",
-                      resize: "vertical", outline: "none", lineHeight: 1.7, marginBottom: 14,
+                      padding: "18px 20px", color: C.white,
+                      fontSize: 16, fontFamily: "'JetBrains Mono', monospace",
+                      resize: "vertical", outline: "none", lineHeight: 1.7, marginBottom: 16,
                       transition: "border-color 0.15s",
                     }}
                     onFocus={e => e.target.style.borderColor = C.orange}
@@ -430,7 +431,7 @@ export default function LiveDemoDashboard() {
 
                   {/* offline warning */}
                   {health !== "online" && (
-                    <div style={{ marginTop: 14, fontSize: 11, color: C.red, padding: "8px 12px", background: C.bg, border: `2px solid ${C.red}`, fontFamily: "monospace" }}>
+                    <div style={{ marginTop: 16, fontSize: 13, color: C.red, padding: "10px 14px", background: C.bg, border: `2px solid ${C.red}`, fontFamily: "monospace" }}>
                       ✗ Backend offline — <code>uvicorn main:app --port 8000</code>
                     </div>
                   )}
@@ -491,7 +492,7 @@ export default function LiveDemoDashboard() {
                     </div>
                     <div style={{ background: C.card, padding: 18, border: `2px solid ${C.orange}`, boxShadow: shO() }}>
                       <Label text="Enhanced Prompt" accent={C.orange} />
-                      <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.65, maxHeight: 90, overflowY: "auto", fontFamily: "'JetBrains Mono', monospace" }}>
+                      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.65, maxHeight: 90, overflowY: "auto", fontFamily: "'JetBrains Mono', monospace" }}>
                         {enhanceData.enhanced_prompt}
                       </div>
                       <div style={{ marginTop: 10, fontSize: 10, color: C.faint, fontFamily: "monospace" }}>{enhanceData.enhanced_prompt.split(" ").length} words · {enhanceData.rules_count} standards injected</div>
@@ -504,13 +505,14 @@ export default function LiveDemoDashboard() {
               {(codeWithout || codeWith || stage === "generating") && (
                 <div style={{ animation: "slideUp 0.4s ease both" }}>
                   <Label text="Live Code Generation — Claude generating from both prompts simultaneously" accent={C.faint} />
+                  <Label text="Live Code Generation — Claude generating from both prompts simultaneously" accent={C.light} />
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                         <div style={{ width: 10, height: 10, background: C.red, border: `2px solid ${C.red}` }} />
-                        <span style={{ fontSize: 11, color: C.red, fontWeight: 800, fontFamily: "monospace", letterSpacing: "0.08em" }}>WITHOUT OptiEngine</span>
-                        <span style={{ fontSize: 10, color: C.faint, fontFamily: "monospace" }}>raw prompt → Claude</span>
+                        <span style={{ fontSize: 14, color: C.red, fontWeight: 800, fontFamily: "monospace", letterSpacing: "0.08em" }}>WITHOUT OptiEngine</span>
+                        <span style={{ fontSize: 11, color: C.light, fontFamily: "monospace" }}>raw prompt → Claude</span>
                       </div>
                       {stage === "generating" && !codeWithout
                         ? <div style={{ padding: 28, textAlign: "center", background: C.card, border: `2px solid ${C.red}` }}><Spinner color={C.red} /></div>
@@ -589,15 +591,15 @@ export default function LiveDemoDashboard() {
 
               {rulesData && !rulesLoading && (
                 <div>
-                  <div style={{ fontSize: 11, color: C.faint, marginBottom: 14, fontFamily: "monospace" }}>
+                  <div style={{ fontSize: 15, color: C.muted, marginBottom: 18, fontFamily: "monospace" }}>
                     {rulesData.count ?? rulesData.rules?.length ?? 0} rules in{" "}
                     <code style={{ color: C.sky }}>guidelines_{rulesDomain.toLowerCase()}</code>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {(rulesData.rules ?? []).map((rule: any, i: number) => (
                       <div key={i} style={{
-                        background: C.card, padding: "14px 16px",
+                        background: C.card, padding: "18px 20px",
                         border: `2px solid ${C.borderDim}`,
                         animation: `slideUp 0.3s ease ${i * 0.05}s both`,
                         transition: "border-color 0.15s, box-shadow 0.15s",
@@ -605,16 +607,16 @@ export default function LiveDemoDashboard() {
                         onMouseEnter={e => { e.currentTarget.style.borderColor = C.sky; e.currentTarget.style.boxShadow = shS(3); }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderDim; e.currentTarget.style.boxShadow = "none"; }}
                       >
-                        <div style={{ display: "flex", gap: 7, marginBottom: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 10, background: C.sky, color: C.bg, padding: "2px 8px", fontWeight: 800, letterSpacing: "0.08em", fontFamily: "monospace" }}>{rule.domain}</span>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 13, background: C.sky, color: C.bg, padding: "4px 12px", fontWeight: 800, letterSpacing: "0.08em", fontFamily: "monospace" }}>{rule.domain}</span>
                           {rule.project && rule.project !== "All" && (
-                            <span style={{ fontSize: 10, background: C.purple, color: C.bg, padding: "2px 8px", fontWeight: 800, fontFamily: "monospace" }}>{rule.project}</span>
+                            <span style={{ fontSize: 13, background: C.purple, color: C.bg, padding: "4px 12px", fontWeight: 800, fontFamily: "monospace" }}>{rule.project}</span>
                           )}
                           {rule.topic && (
-                            <span style={{ fontSize: 10, color: C.faint, fontFamily: "monospace" }}>{rule.topic}</span>
+                            <span style={{ fontSize: 13, color: C.white, fontFamily: "monospace", padding: "4px 0" }}>{rule.topic}</span>
                           )}
                         </div>
-                        <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.65 }}>{rule.rule_text}</div>
+                        <div style={{ fontSize: 18, color: C.white, lineHeight: 1.6 }}>{rule.rule_text}</div>
                       </div>
                     ))}
                   </div>
