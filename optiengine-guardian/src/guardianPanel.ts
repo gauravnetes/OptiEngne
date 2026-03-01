@@ -19,21 +19,13 @@ export class GuardianPanel implements vscode.WebviewViewProvider {
     this._view = webviewView;
     this._webviewReady = false;
 
-    // VERY Strict minimal options. 
+    // 1. Configure webview options
     webviewView.webview.options = {
       enableScripts: true
     };
 
-    // 1. Set a tiny, safe bootstrap HTML instantly
-    webviewView.webview.html = `<!DOCTYPE html><html><body>Initializing GUI...</body></html>`;
-
-    // 2. Inject the massive CSS/Mermaid DOM *after* the current tick
-    // This allows VS Code's internal Extension Host to register the Service Worker safely
-    setTimeout(() => {
-      if (this._view === webviewView) {
-        webviewView.webview.html = this._buildHtml(webviewView.webview);
-      }
-    }, 250);
+    // 2. Assign HTML EXACTLY ONCE to prevent the Service Worker InvalidStateError
+    webviewView.webview.html = this._buildHtml(webviewView.webview);
 
     webviewView.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
       switch (message.type) {

@@ -9,6 +9,20 @@ from app.engine.prompt_builder import enhance_prompt_with_rules
 from app.utils.sanitizer import sanitize_prompt
 
 # -------------------------------------------------------------------
+# Eager Module Loading
+# -------------------------------------------------------------------
+try:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s")
+    startup_logger = logging.getLogger("ContextEngine.Startup")
+    startup_logger.info("Pre-loading ChromaDB and embedding model at startup...")
+    from app.db.chroma_client import get_chroma_client, get_embedding_function
+    get_chroma_client()
+    get_embedding_function()
+    startup_logger.info("ContextEngine startup complete — ready to serve requests instantly.")
+except Exception as _startup_err:
+    print(f"Failed to pre-load resources: {_startup_err}")
+
+# -------------------------------------------------------------------
 # Logging
 # -------------------------------------------------------------------
 
@@ -125,6 +139,79 @@ def enhance_development_prompt(
 # -------------------------------------------------------------------
 # Entry point
 # -------------------------------------------------------------------
+
+def _resolve_domain(file_path: str) -> str:
+    path_lower = file_path.lower()
+    if "backend" in path_lower or "api" in path_lower or file_path.endswith(".py"):
+        return "Backend"
+    if "frontend" in path_lower or "web" in path_lower or file_path.endswith((".ts", ".tsx", ".js", ".jsx")):
+        return "Web"
+    if "data" in path_lower or "ml" in path_lower or "ai" in path_lower:
+        return "AI"
+    return "Global"
+
+import json
+
+@mcp.tool()
+def get_org_context(file_path: str, content: str, org_id: str = "global") -> str:
+    """
+    Called by the Guardian Extension when a user saves a file.
+    Returns the organizational compliance checklist and a mermaid architecture diagram.
+    """
+    logger.info(f"Guardian analyzing file: {file_path}")
+    domain = _resolve_domain(file_path)
+
+    try:
+        request = PromptRequest(junior_prompt=content, domain=domain, project="Guardian")
+        rules = retrieve_relevant_rules(request)
+
+        checklist = []
+        if rules:
+            for rule in rules:
+                topic = rule.get("topic", "")
+                dist = rule.get("distance", 0)
+                relevance = max(0, min(100, int((1 - dist) * 100)))
+                rule_domain = rule.get("domain", domain)
+
+                prefix = f"[{topic.upper()}]" if topic else "[RULE]"
+                checklist.append(
+                    f"{prefix} ({relevance}% relevance | {rule_domain}) — "
+                    f"{rule.get('rule_text', '')}"
+                )
+        else:
+            checklist = [
+                f"[INFO] No organizational rules found for domain '{domain}'.",
+                "[INFO] Proceeding with standard best practices.",
+                "[ACTION] Code should be reviewed by a senior engineer before merge."
+            ]
+        
+        # Placeholder for the mermaid diagram 
+        mermaid_diagram = "graph TD\n  A[File Saved] --> B[Rule Engine]\n  B --> C[Compliance Passed]"
+
+        result = {
+            "compliance_checklist": checklist,
+            "mermaid_diagram": mermaid_diagram,
+            "org_id": org_id,
+            "domain": domain,
+            "file_path": file_path,
+        }
+
+        logger.info(f"Guardian context built | domain={domain} | rules={len(rules)}")
+        return json.dumps(result)
+
+    except Exception as e:
+        logger.error(f"Guardian context failed: {e}", exc_info=True)
+        error_result = {
+            "compliance_checklist": [
+                f"[ERROR] ContextEngine: {type(e).__name__}: {str(e)}"
+            ],
+            "mermaid_diagram": f"graph TD\n  A[Error] --> B[{type(e).__name__}]",
+            "org_id": org_id,
+            "domain": domain,
+            "file_path": file_path,
+        }
+        return json.dumps(error_result)
+
 
 if __name__ == "__main__":
     logger.info("ContextEngine MCP Server starting — waiting for IDE connections...")

@@ -480,6 +480,70 @@ body {
     font-size: 10px;
 }
 
+/* ═══════════════════════════════════════════════ CHECKLIST BADGES */
+
+.item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.item-badge {
+    font-size: 8px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    padding: 1px 5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.badge-rule {
+    background: var(--accent-ok);
+    color: var(--bg);
+}
+
+.badge-error {
+    background: var(--accent-err);
+    color: #ffffff;
+}
+
+.badge-action {
+    background: var(--accent-warn);
+    color: var(--bg);
+}
+
+.badge-info {
+    background: var(--accent-blue);
+    color: #ffffff;
+}
+
+.item-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+}
+
+.meta-relevance {
+    color: var(--accent-ok);
+    font-weight: bold;
+    padding: 0 3px;
+    border: 1px solid var(--accent-ok);
+}
+
+.meta-domain {
+    color: var(--text-dim);
+    font-style: normal;
+    letter-spacing: 0.08em;
+}
+
 /* ═══════════════════════════════════════════════ DIAGRAM */
 
 #diagram-container {
@@ -500,25 +564,16 @@ body {
     background: transparent !important;
 }
 
-/* Override Mermaid's internal white backgrounds */
-#mermaid-target .node rect,
-#mermaid-target .node circle,
-#mermaid-target .node polygon {
-    fill: var(--surface) !important;
-    stroke: var(--border) !important;
-    stroke-width: 2px !important;
-}
-
+/* Let the backend's inline styles take precedence for node colors */
 #mermaid-target .label,
 #mermaid-target .nodeLabel,
 #mermaid-target text {
     font-family: var(--font-mono) !important;
-    font-size: 11px !important;
-    fill: var(--text) !important;
+    font-size: 10px !important;
 }
 
 #mermaid-target .edgePath .path {
-    stroke: var(--border) !important;
+    stroke: #555 !important;
     stroke-width: 1.5px !important;
 }
 

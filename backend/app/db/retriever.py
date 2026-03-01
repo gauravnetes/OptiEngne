@@ -125,7 +125,7 @@ def ingest_rule(domain: str, project: str, topic: str, rule_text: str) -> str:
 def retrieve_relevant_rules(
     request: PromptRequest,
     max_rules: int = MAX_RULES_TO_APPLY
-) -> list[str]:
+) -> list[dict]:
     """
     Retrieve semantically relevant rules for a developer prompt.
 
@@ -133,7 +133,7 @@ def retrieve_relevant_rules(
     1. Query the 'Global' collection (org-wide rules always apply).
     2. Query the domain-specific collection (e.g. 'Backend').
     3. Merge results, apply relevance threshold, deduplicate, sort by relevance.
-    4. Return the top `max_rules` rule texts.
+    4. Return the top `max_rules` rule dicts.
     """
     query_text = request.junior_prompt
     domain = request.domain
@@ -156,7 +156,9 @@ def retrieve_relevant_rules(
 
     # Log ALL candidate distances so you can calibrate RELEVANCE_THRESHOLD
     logger.info(
-        f"RAG candidates for domain='{domain}' — "        f"{len(all_hits)} hits | distances: "        + str([f"{h['topic'][:20]}={h['distance']:.3f}" for h in sorted(all_hits, key=lambda x: x['distance'])])
+        f"RAG candidates for domain='{domain}' — "
+        f"{len(all_hits)} hits | distances: "
+        + str([f"{h['topic'][:20]}={h['distance']:.3f}" for h in sorted(all_hits, key=lambda x: x['distance'])])
     )
 
     # --- Step 3: Filter by relevance threshold ---
@@ -186,7 +188,7 @@ def retrieve_relevant_rules(
         f"distances: {[round(h['distance'], 3) for h in selected]}"
     )
 
-    return [hit["rule_text"] for hit in selected]
+    return selected
 
 
 def list_rules(domain: Optional[str] = None) -> list[dict]:

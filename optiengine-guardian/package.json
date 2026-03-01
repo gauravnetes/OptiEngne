@@ -72,6 +72,11 @@
                     "type": "number",
                     "default": 1500,
                     "description": "Milliseconds to debounce after file save before calling MCP"
+                },
+                "optiengine.mcpPort": {
+                    "type": "number",
+                    "default": 8765,
+                    "description": "Port for the MCP server (streamable-http). Used when the extension starts the server."
                 }
             }
         }

@@ -57,11 +57,11 @@ MANDATORY ORGANIZATIONAL RULES:
 """
 
 
-def _build_rules_block(rules: list[str]) -> str:
+def _build_rules_block(rules: list[dict]) -> str:
     """Format rules with explicit [MANDATORY] tags so the LLM treats them as hard constraints."""
     lines = []
     for i, rule in enumerate(rules, start=1):
-        lines.append(f"{i}. [MANDATORY] {rule}")
+        lines.append(f"{i}. [MANDATORY] {rule.get('rule_text', '')}")
     return "\n".join(lines)
 
 
@@ -69,7 +69,7 @@ def _build_rules_block(rules: list[str]) -> str:
 # Public API
 # -------------------------------------------------------------------
 
-def enhance_prompt_with_rules(junior_prompt: str, rules: list[str]) -> str:
+def enhance_prompt_with_rules(junior_prompt: str, rules: list[dict]) -> str:
     """
     Rewrite a junior developer's prompt to explicitly enforce organizational rules.
 
