@@ -184,10 +184,34 @@ def get_org_context(file_path: str, content: str, org_id: str = "global") -> str
                 "[INFO] Proceeding with standard best practices.",
                 "[ACTION] Code should be reviewed by a senior engineer before merge."
             ]
+        import os
+        filename = os.path.basename(file_path.replace("\\", "/"))
         
-        # Placeholder for the mermaid diagram 
-        mermaid_diagram = "graph TD\n  A[File Saved] --> B[Rule Engine]\n  B --> C[Compliance Passed]"
+        # Build dynamic Mermaid architecture diagram
+        mermaid_lines = [
+            "flowchart TD",
+            "    classDef core fill:#111,stroke:#444,stroke-width:2px,color:#fff",
+            "    classDef rule fill:#1a2b1f,stroke:#2e5c3a,stroke-width:1px,color:#a5d6a7",
+            "    classDef action fill:#2a1f1a,stroke:#5c3a2e,stroke-width:1px,color:#d6a5a5",
+            "",
+            f"    File[\"{filename}\"]:::core --> Proxy{{\"Guardian Shield\"}}:::core",
+        ]
 
+        if rules:
+            mermaid_lines.append("    Proxy --> Engine(Compliance Engine):::core")
+            for i, rule in enumerate(rules):
+                topic = rule.get("topic", f"Rule {i+1}").replace('"', '&quot;')
+                rule_domain = rule.get("domain", domain)
+                dist = rule.get("distance", 0)
+                relevance = max(0, min(100, int((1 - dist) * 100)))
+                
+                node_id = f"R{i}"
+                # Using standard HTML tags (<b>, <i>, <br/>) which are 100% robust in Mermaid 10+
+                mermaid_lines.append(f"    Engine -.-> {node_id}[\"<b>{topic}</b><br/><i>{relevance}% Relevance | {rule_domain}</i>\"]:::rule")
+        else:
+            mermaid_lines.append("    Proxy --> Pass([Standard Practices]):::action")
+            
+        mermaid_diagram = "\n".join(mermaid_lines)
         result = {
             "compliance_checklist": checklist,
             "mermaid_diagram": mermaid_diagram,

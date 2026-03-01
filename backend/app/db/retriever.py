@@ -173,12 +173,17 @@ def retrieve_relevant_rules(
         )
         return []
 
-    # --- Step 4: Deduplicate by rule_text, sort by distance (ascending = more relevant) ---
-    seen = set()
+    # --- Step 4: Deduplicate by topic, sort by distance (ascending = more relevant) ---
+    import re
+    seen_topics = set()
     deduped = []
     for hit in sorted(relevant_hits, key=lambda h: h["distance"]):
-        if hit["rule_text"] not in seen:
-            seen.add(hit["rule_text"])
+        # Extract base topic (e.g., "STATE MANAGEMENT" from "STATE MANAGEMENT — ARCHITECTURE")
+        raw_topic = hit.get("topic") or hit.get("rule_text", "Unknown")
+        base_topic = re.split(r'\s*[-\u2013\u2014]\s*', raw_topic)[0].strip().lower()
+        
+        if base_topic not in seen_topics:
+            seen_topics.add(base_topic)
             deduped.append(hit)
 
     selected = deduped[:max_rules]
